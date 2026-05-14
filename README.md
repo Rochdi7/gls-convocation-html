@@ -93,7 +93,7 @@ Le fichier doit contenir au minimum les colonnes suivantes (l''ordre n''a pas d'
 
 | Ref | Etudiant | Telephone | Groupe |
 |-----|----------|-----------|--------|
-| 2025001 | El Younani Mohamed | 0600000000 | G1 |
+| 2025001 | Benani Mohamed | 0600000000 | G1 |
 | 2025002 | ... | ... | ... |
 
 ---
