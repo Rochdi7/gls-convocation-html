@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>GLS - Gestion d'examens</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: Calibri, "Segoe UI", Arial, sans-serif;
+    margin: 0;
+    padding: 24px;
+    background: #f3f4f6;
+    color: #1a1a1a;
+  }
+  h1 { margin: 0 0 4px; font-size: 22px; }
+  h2 { margin: 0 0 12px; font-size: 16px; color: #333; border-bottom: 2px solid #1d6f42; padding-bottom: 6px; }
+  .container { max-width: 1400px; margin: 0 auto; }
+  .card {
+    background: #fff;
+    border: 1px solid #d8d8d8;
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin-bottom: 18px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .row + .row { margin-top: 10px; }
+
+  button, .btn {
+    background: #1d6f42; color: #fff; border: none;
+    padding: 8px 16px; border-radius: 4px; cursor: pointer;
+    font-size: 14px; font-weight: 500;
+  }
+  button:hover, .btn:hover { background: #155a33; }
+  button:disabled { background: #aaa; cursor: not-allowed; }
+  button.danger { background: #c53030; }
+  button.danger:hover { background: #9b2424; }
+  button.secondary { background: #4a5568; }
+  button.secondary:hover { background: #2d3748; }
+  button.warn { background: #d69e2e; }
+  button.warn:hover { background: #b7791f; }
+  button.small { padding: 4px 10px; font-size: 12px; }
+
+  input[type=text], input[type=number] {
+    border: 1px solid #c0c0c0; border-radius: 4px; padding: 7px 10px; font-size: 14px;
+  }
+  input[type=file] { display: none; }
+  label.file-btn {
+    background: #2b6cb0; color: #fff; padding: 8px 16px; border-radius: 4px;
+    cursor: pointer; font-size: 14px; font-weight: 500; display: inline-block;
+  }
+  label.file-btn:hover { background: #1f4e8c; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table th, table td { border: 1px solid #d0d0d0; padding: 6px 10px; text-align: left; }
+  table thead th { background: #f2f2f2; font-weight: bold; }
+  table tbody tr:nth-child(even) td { background: #fafafa; }
+  td.num { text-align: right; width: 50px; }
+  td.actions { white-space: nowrap; width: 1%; }
+
+  .stat { display: inline-block; background: #edf2f7; padding: 6px 12px; border-radius: 4px; font-size: 13px; margin-right: 8px; }
+  .stat b { color: #1d6f42; }
+  .filename { font-size: 13px; color: #555; }
+  .muted { color: #888; font-size: 13px; }
+  .error { background: #fee; border: 1px solid #c00; color: #900; padding: 10px 14px; border-radius: 4px; margin: 10px 0; font-size: 13px; }
+  .success { background: #efe; border: 1px solid #2a7; color: #064; padding: 10px 14px; border-radius: 4px; margin: 10px 0; font-size: 13px; }
+
+  .salle-card {
+    border: 1px solid #d0d0d0; border-radius: 6px; padding: 14px;
+    background: #fafafa; margin-bottom: 14px;
+  }
+  .salle-card h3 { margin: 0 0 8px; font-size: 15px; color: #1d6f42; }
+  .salle-card .meta { font-size: 12px; color: #555; margin-bottom: 8px; }
+
+  /* Convocation page */
+  .convocation {
+    width: 210mm; min-height: 297mm; padding: 18mm 18mm 14mm;
+    background: #fff; margin: 0 auto 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    page-break-after: always;
+    font-family: "Times New Roman", Times, serif;
+    color: #000;
+  }
+  .convocation:last-child { page-break-after: auto; }
+  .conv-head { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #1d6f42; padding-bottom: 12px; gap: 16px; }
+  .conv-head .logo { flex: 0 0 auto; }
+  .conv-head .logo img { height: 70px; width: auto; display: block; }
+  .conv-head .left { font-size: 13px; line-height: 1.5; flex: 1; }
+  .conv-head .left .center-name { font-weight: bold; font-size: 16px; color: #1d6f42; }
+  .conv-head .right { text-align: right; font-size: 12px; flex: 0 0 auto; }
+  .conv-title { text-align: center; font-size: 20px; font-weight: bold; margin: 25px 0 5px; letter-spacing: 1px; }
+  .conv-subtitle { text-align: center; font-size: 13px; color: #555; margin-bottom: 25px; }
+  .conv-body { font-size: 14px; line-height: 1.7; }
+  .conv-body .field { margin-bottom: 8px; }
+  .conv-body .field .label { display: inline-block; width: 180px; font-weight: bold; }
+  .conv-body .field .value { display: inline-block; border-bottom: 1px dotted #999; min-width: 280px; padding: 2px 6px; }
+  .conv-note { margin-top: 30px; padding: 12px 14px; background: #f7f7f7; border-left: 3px solid #1d6f42; font-size: 12px; line-height: 1.6; }
+  .conv-foot { margin-top: 40px; display: flex; justify-content: space-between; font-size: 12px; }
+  .conv-foot .sig { width: 200px; text-align: center; }
+  .conv-foot .sig .line { border-top: 1px solid #000; margin-top: 50px; padding-top: 4px; }
+
+  #convocationsArea { display: none; background: #ddd; padding: 20px 0; margin-top: 18px; }
+
+  @media print {
+    body { background: #fff; padding: 0; margin: 0; }
+    .no-print { display: none !important; }
+    #convocationsArea { display: block !important; background: #fff; padding: 0; margin: 0; }
+    .convocation { box-shadow: none; margin: 0; width: 100%; min-height: auto; }
+    @page { size: A4; margin: 0; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <div class="card no-print">
+    <h1>GLS - Gestion d'examens</h1>
+    <div class="muted">Importez les groupes, créez les salles, répartissez aléatoirement, exportez les convocations.</div>
+  </div>
+
+  <!-- ====================== EXAM INFO ====================== -->
+  <div class="card no-print">
+    <h2>1. Informations de l'examen</h2>
+    <div class="row">
+      <label>Centre&nbsp;: <input type="text" id="examCenter" placeholder="GLS Sprachenzentrum"></label>
+      <label>Adresse&nbsp;: <input type="text" id="examAddress" placeholder="Centre Marrakech" style="width:340px"></label>
+    </div>
+    <div class="row">
+      <label>Niveau&nbsp;: <input type="text" id="examLevel" placeholder="A2"></label>
+      <label>Date(s)&nbsp;: <input type="text" id="examDate" placeholder="Samedi 20/06/2026"></label>
+      <label>Heure&nbsp;: <input type="text" id="examTime" placeholder="09:00 - 12:00"></label>
+    </div>
+  </div>
+
+  <!-- ====================== IMPORT ====================== -->
+  <div class="card no-print">
+    <h2>2. Importer un groupe depuis Excel</h2>
+    <div class="row">
+      <label class="file-btn">
+        Choisir un fichier Excel
+        <input type="file" id="fileInput" accept=".xlsx,.xls,.csv">
+      </label>
+      <span class="filename" id="filename">Aucun fichier sélectionné</span>
+    </div>
+    <div class="row">
+      <span class="muted">Vous pouvez importer plusieurs fichiers (un par groupe). Les étudiants sont accumulés.</span>
+    </div>
+    <div id="importMsg"></div>
+  </div>
+
+  <!-- ====================== SALLES ====================== -->
+  <div class="card no-print">
+    <h2>3. Salles d'examen</h2>
+    <div class="row">
+      <input type="text" id="salleName" placeholder="Nom de la salle (ex: Salle 1)">
+      <input type="number" id="salleCapacity" placeholder="Capacité" min="1" style="width:120px">
+      <button id="addSalleBtn">+ Ajouter salle</button>
+      <span class="stat">Total places&nbsp;: <b id="totalSeats">0</b></span>
+      <span class="stat">Total étudiants&nbsp;: <b id="totalStudentsStat">0</b></span>
+    </div>
+    <div id="sallesList" style="margin-top:14px"></div>
+  </div>
+
+  <!-- ====================== STUDENTS ====================== -->
+  <div class="card no-print">
+    <h2>4. Étudiants importés (<span id="studentCount">0</span>)</h2>
+    <div class="row">
+      <button id="shuffleBtn" class="warn">Répartir aléatoirement dans les salles</button>
+      <button id="clearStudentsBtn" class="danger">Vider la liste</button>
+    </div>
+    <div id="shuffleMsg"></div>
+    <div style="max-height:380px; overflow:auto; margin-top:12px">
+      <table id="studentsTbl">
+        <thead><tr>
+          <th>#</th><th>Réf</th><th>Nom complet</th><th>Téléphone</th><th>Groupe</th><th>Salle assignée</th><th></th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ====================== EXPORT ====================== -->
+  <div class="card no-print">
+    <h2>5. Exporter les convocations</h2>
+    <div class="row">
+      <button id="generateBtn">Générer les convocations</button>
+      <button id="printBtn" class="secondary" disabled>Télécharger en PDF / Imprimer</button>
+      <button id="hidePreviewBtn" class="secondary" disabled>Masquer l'aperçu</button>
+    </div>
+    <div class="muted" style="margin-top:8px">Un PDF combiné, une page par étudiant.</div>
+  </div>
+
+  <div id="convocationsArea"></div>
+
+</div>
+
+<script>
+//=========================================================
+// STATE + STORAGE
+//=========================================================
+const STORE_KEY = 'gls_exam_state_v1';
+let state = {
+  exam: { center: '', address: '', level: '', date: '', time: '' },
+  salles: [],      // [{id, name, capacity}]
+  students: []     // [{id, ref, fullName, phone, group, salle}]
+};
+
+function save() { localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
+function load() {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (raw) state = Object.assign(state, JSON.parse(raw));
+  } catch (e) {}
+}
+function uid() { return Math.random().toString(36).slice(2, 10); }
+
+//=========================================================
+// EXAM INFO
+//=========================================================
+['examCenter','examAddress','examLevel','examDate','examTime'].forEach(id => {
+  const el = document.getElementById(id);
+  el.addEventListener('input', () => {
+    state.exam[id.replace('exam','').toLowerCase()] = el.value;
+    save();
+  });
+});
+
+function fillExamInputs() {
+  document.getElementById('examCenter').value = state.exam.center || '';
+  document.getElementById('examAddress').value = state.exam.address || '';
+  document.getElementById('examLevel').value = state.exam.level || '';
+  document.getElementById('examDate').value = state.exam.date || '';
+  document.getElementById('examTime').value = state.exam.time || '';
+}
+
+//=========================================================
+// IMPORT EXCEL
+//=========================================================
+const fileInput = document.getElementById('fileInput');
+const filenameEl = document.getElementById('filename');
+const importMsg = document.getElementById('importMsg');
+
+fileInput.addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  filenameEl.textContent = file.name;
+  importMsg.innerHTML = '';
+  try {
+    const data = await file.arrayBuffer();
+    const wb = XLSX.read(data, { type: 'array', cellDates: true });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: '' });
+    const added = importRows(rows);
+    importMsg.innerHTML = '<div class="success">' + added + " étudiants ajoutés depuis " + esc(file.name) + '.</div>';
+    fileInput.value = '';
+    renderStudents();
+    renderStats();
+  } catch (err) {
+    importMsg.innerHTML = '<div class="error">Erreur de lecture: ' + esc(err.message) + '</div>';
+  }
+});
+
+function normalize(s) { return String(s || '').trim().toLowerCase().replace(/\s+/g, ' '); }
+
+function findHeaderRow(rows) {
+  for (let i = 0; i < rows.length; i++) {
+    const cells = rows[i].map(normalize);
+    const hasRef = cells.some(c => c === 'réf' || c === 'ref');
+    const hasEtu = cells.some(c => c.startsWith('étudiant') || c.startsWith('etudiant'));
+    if (hasRef && hasEtu) return i;
+  }
+  return -1;
+}
+
+function importRows(rows) {
+  const hdrIdx = findHeaderRow(rows);
+  if (hdrIdx === -1) throw new Error("Entête introuvable (colonnes Réf / Étudiant requises).");
+  const header = rows[hdrIdx].map(normalize);
+  const col = {
+    ref:    header.findIndex(c => c === 'réf' || c === 'ref'),
+    name:   header.findIndex(c => c.startsWith('étudiant') || c.startsWith('etudiant')),
+    phone:  header.findIndex(c => c.startsWith('téléphone') || c.startsWith('telephone')),
+    group:  header.findIndex(c => c.startsWith('groupe'))
+  };
+  let added = 0;
+  for (let i = hdrIdx + 1; i < rows.length; i++) {
+    const r = rows[i];
+    const name = String(r[col.name] || '').trim();
+    if (!name) continue;
+    const ref = String(r[col.ref] || '').trim();
+    if (ref && state.students.some(s => s.ref === ref)) continue;
+    state.students.push({
+      id: uid(),
+      ref: ref,
+      fullName: name,
+      phone: String(r[col.phone] || '').trim(),
+      group: String(r[col.group] || '').trim(),
+      salle: ''
+    });
+    added++;
+  }
+  save();
+  return added;
+}
+
+//=========================================================
+// SALLES CRUD
+//=========================================================
+const sallesList = document.getElementById('sallesList');
+
+document.getElementById('addSalleBtn').addEventListener('click', () => {
+  const name = document.getElementById('salleName').value.trim();
+  const cap = parseInt(document.getElementById('salleCapacity').value, 10);
+  if (!name || !cap || cap < 1) { alert('Nom et capacité requis.'); return; }
+  state.salles.push({ id: uid(), name, capacity: cap });
+  document.getElementById('salleName').value = '';
+  document.getElementById('salleCapacity').value = '';
+  save(); renderSalles(); renderStats();
+});
+
+function renderSalles() {
+  if (state.salles.length === 0) {
+    sallesList.innerHTML = '<div class="muted">Aucune salle créée pour l\'instant.</div>';
+    return;
+  }
+  sallesList.innerHTML = state.salles.map(s => {
+    const assigned = state.students.filter(st => st.salle === s.name).length;
+    const full = assigned >= s.capacity;
+    return `<div class="salle-card">
+      <h3>${esc(s.name)}</h3>
+      <div class="meta">Capacité: <b>${s.capacity}</b> &nbsp;|&nbsp; Assignés: <b style="color:${full?'#c53030':'#1d6f42'}">${assigned}</b> / ${s.capacity}</div>
+      <div>
+        <button class="small secondary" onclick="editSalle('${s.id}')">Modifier</button>
+        <button class="small danger" onclick="deleteSalle('${s.id}')">Supprimer</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+window.editSalle = function(id) {
+  const s = state.salles.find(x => x.id === id);
+  if (!s) return;
+  const newName = prompt('Nom de la salle:', s.name);
+  if (newName === null) return;
+  const newCap = prompt('Capacité:', s.capacity);
+  if (newCap === null) return;
+  const cap = parseInt(newCap, 10);
+  if (!newName.trim() || !cap || cap < 1) { alert('Valeurs invalides.'); return; }
+  const oldName = s.name;
+  s.name = newName.trim();
+  s.capacity = cap;
+  state.students.forEach(st => { if (st.salle === oldName) st.salle = s.name; });
+  save(); renderSalles(); renderStudents(); renderStats();
+};
+
+window.deleteSalle = function(id) {
+  const s = state.salles.find(x => x.id === id);
+  if (!s) return;
+  if (!confirm('Supprimer la salle "' + s.name + '" ? Les étudiants assignés seront désassignés.')) return;
+  state.students.forEach(st => { if (st.salle === s.name) st.salle = ''; });
+  state.salles = state.salles.filter(x => x.id !== id);
+  save(); renderSalles(); renderStudents(); renderStats();
+};
+
+//=========================================================
+// STUDENTS TABLE
+//=========================================================
+const studentsTbody = document.querySelector('#studentsTbl tbody');
+
+function renderStudents() {
+  document.getElementById('studentCount').textContent = state.students.length;
+  if (state.students.length === 0) {
+    studentsTbody.innerHTML = '<tr><td colspan="7" class="muted" style="text-align:center; padding:20px">Aucun étudiant importé.</td></tr>';
+    return;
+  }
+  studentsTbody.innerHTML = state.students.map((s, i) => `
+    <tr>
+      <td class="num">${i+1}</td>
+      <td>${esc(s.ref)}</td>
+      <td>${esc(s.fullName)}</td>
+      <td>${esc(s.phone)}</td>
+      <td>${esc(s.group)}</td>
+      <td>${s.salle ? '<b style="color:#1d6f42">'+esc(s.salle)+'</b>' : '<span class="muted">-</span>'}</td>
+      <td class="actions"><button class="small danger" onclick="deleteStudent('${s.id}')">x</button></td>
+    </tr>
+  `).join('');
+}
+
+window.deleteStudent = function(id) {
+  state.students = state.students.filter(s => s.id !== id);
+  save(); renderStudents(); renderSalles(); renderStats();
+};
+
+document.getElementById('clearStudentsBtn').addEventListener('click', () => {
+  if (!confirm('Vider toute la liste d\'étudiants ?')) return;
+  state.students = [];
+  save(); renderStudents(); renderSalles(); renderStats();
+});
+
+//=========================================================
+// SHUFFLE + ASSIGN
+//=========================================================
+const shuffleMsg = document.getElementById('shuffleMsg');
+
+document.getElementById('shuffleBtn').addEventListener('click', () => {
+  shuffleMsg.innerHTML = '';
+  if (state.students.length === 0) { shuffleMsg.innerHTML = '<div class="error">Aucun étudiant à répartir.</div>'; return; }
+  if (state.salles.length === 0)   { shuffleMsg.innerHTML = '<div class="error">Aucune salle créée.</div>'; return; }
+  const totalSeats = state.salles.reduce((a, s) => a + s.capacity, 0);
+  if (totalSeats < state.students.length) {
+    shuffleMsg.innerHTML = '<div class="error">Capacité totale insuffisante: ' + totalSeats + ' places pour ' + state.students.length + ' étudiants.</div>';
+    return;
+  }
+  // Fisher-Yates shuffle
+  const shuffled = state.students.slice();
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  // Fill rooms sequentially up to capacity
+  let idx = 0;
+  for (const salle of state.salles) {
+    for (let k = 0; k < salle.capacity && idx < shuffled.length; k++, idx++) {
+      shuffled[idx].salle = salle.name;
+    }
+  }
+  state.students = shuffled;
+  save(); renderStudents(); renderSalles(); renderStats();
+  shuffleMsg.innerHTML = '<div class="success">Répartition aléatoire effectuée.</div>';
+});
+
+//=========================================================
+// STATS
+//=========================================================
+function renderStats() {
+  const totalSeats = state.salles.reduce((a, s) => a + s.capacity, 0);
+  document.getElementById('totalSeats').textContent = totalSeats;
+  document.getElementById('totalStudentsStat').textContent = state.students.length;
+}
+
+//=========================================================
+// GENERATE CONVOCATIONS
+//=========================================================
+const convArea = document.getElementById('convocationsArea');
+const printBtn = document.getElementById('printBtn');
+const hideBtn = document.getElementById('hidePreviewBtn');
+
+document.getElementById('generateBtn').addEventListener('click', () => {
+  if (state.students.length === 0) { alert('Aucun étudiant.'); return; }
+  const unassigned = state.students.filter(s => !s.salle).length;
+  if (unassigned > 0) {
+    if (!confirm(unassigned + ' étudiant(s) sans salle. Continuer quand même ?')) return;
+  }
+  const ex = state.exam;
+  convArea.innerHTML = state.students.map(s => `
+    <div class="convocation">
+      <div class="conv-head">
+        ${LOGO_DATA_URL ? `<div class="logo"><img src="${LOGO_DATA_URL}" alt=""></div>` : ''}
+        <div class="left">
+          <div class="center-name">${esc(ex.center || 'GLS Sprachenzentrum')}</div>
+          <div>${esc(ex.address || '')}</div>
+        </div>
+        <div class="right">
+          <div><b>Réf:</b> ${esc(s.ref)}</div>
+          <div>${new Date().toLocaleDateString('fr-FR')}</div>
+        </div>
+      </div>
+
+      <div class="conv-title">CONVOCATION À L'EXAMEN</div>
+      <div class="conv-subtitle">Niveau ${esc(ex.level || '-')}</div>
+
+      <div class="conv-body">
+        <div class="field"><span class="label">Nom de l'étudiant&nbsp;:</span><span class="value">${esc(s.fullName)}</span></div>
+        <div class="field"><span class="label">Code étudiant (Réf)&nbsp;:</span><span class="value">${esc(s.ref)}</span></div>
+        <div class="field"><span class="label">Groupe d'origine&nbsp;:</span><span class="value">${esc(s.group)}</span></div>
+        <div class="field"><span class="label">Téléphone&nbsp;:</span><span class="value">${esc(s.phone)}</span></div>
+        <div class="field"><span class="label">Date de l'examen&nbsp;:</span><span class="value">${esc(ex.date || '-')}</span></div>
+        <div class="field"><span class="label">Heure&nbsp;:</span><span class="value">${esc(ex.time || '-')}</span></div>
+        <div class="field"><span class="label">Salle d'examen&nbsp;:</span><span class="value"><b>${esc(s.salle || 'NON ASSIGNÉ')}</b></span></div>
+      </div>
+
+      <div class="conv-note">
+        <b>Important&nbsp;:</b> L'étudiant doit se présenter au moins 15 minutes avant le début de l'examen,
+        muni d'une pièce d'identité valide et de cette convocation. Aucun retard ne sera toléré.
+      </div>
+
+      <div class="conv-foot">
+        <div class="sig"><div class="line">Signature de l'étudiant</div></div>
+        <div class="sig"><div class="line">Direction GLS</div></div>
+      </div>
+    </div>
+  `).join('');
+  convArea.style.display = 'block';
+  printBtn.disabled = false;
+  hideBtn.disabled = false;
+  window.scrollTo({ top: convArea.offsetTop - 20, behavior: 'smooth' });
+});
+
+printBtn.addEventListener('click', () => window.print());
+hideBtn.addEventListener('click', () => {
+  convArea.style.display = 'none';
+  convArea.innerHTML = '';
+  printBtn.disabled = true;
+  hideBtn.disabled = true;
+});
+
+//=========================================================
+// HELPERS + INIT
+//=========================================================
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+let LOGO_DATA_URL = '';
+(async function loadLogo() {
+  const candidates = [
+    'gls-noir.png',
+    './gls-noir.png'
+  ];
+  for (const url of candidates) {
+    try {
+      const r = await fetch(url);
+      if (!r.ok) continue;
+      const blob = await r.blob();
+      LOGO_DATA_URL = await new Promise(res => {
+        const fr = new FileReader();
+        fr.onload = () => res(fr.result);
+        fr.readAsDataURL(blob);
+      });
+      return;
+    } catch (e) { /* try next */ }
+  }
+})();
+
+load();
+fillExamInputs();
+renderSalles();
+renderStudents();
+renderStats();
+</script>
+</body>
+</html>
